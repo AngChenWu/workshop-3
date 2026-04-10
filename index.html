@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國發會青年團隊產品服務型錄</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        /* 列表互動效果 */
+        .list-item-card { cursor: pointer; transition: all 0.2s ease-in-out; }
+        .list-item-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04); border-color: #94a3b8;}
+        
+        /* 滾動條美化 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 min-h-screen flex flex-col">
+    
+    <!-- 頁首 -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-20 border-b border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+            <div class="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                <div class="flex-grow">
+                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">
+                        <i data-lucide="briefcase" class="w-6 h-6 sm:w-7 sm:h-7 text-blue-400 shrink-0"></i>
+                        <span class="truncate">國發會青年團隊產品服務型錄</span>
+                    </h1>
+                    <p class="mt-1 text-slate-400 text-xs sm:text-sm font-medium">
+                        點擊列表項目可展開完整提案產品與詳細聯絡資訊
+                    </p>
+                </div>
+                
+                <div class="flex flex-row w-full md:w-auto gap-2 shrink-0">
+                    <!-- 搜尋 -->
+                    <div class="relative w-full sm:w-56">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="h-4 w-4 text-slate-400"></i>
+                        </div>
+                        <input type="text" id="searchInput" placeholder="搜尋品牌、產品..." class="block w-full pl-9 pr-3 py-2.5 sm:py-2 border border-slate-700 rounded-lg leading-5 bg-slate-800 text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" />
+                    </div>
+                    
+                    <!-- 地區過濾 -->
+                    <div class="relative w-32 sm:w-36 shrink-0">
+                        <select id="locationSelect" class="block w-full pl-3 pr-8 py-2.5 sm:py-2 text-sm border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer appearance-none transition-colors"></select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 內容區域 -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-200">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <span id="resultTitle">團隊提案列表</span>
+                <span id="resultCount" class="text-xs font-semibold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full"></span>
+            </h2>
+            
+            <div class="flex items-center gap-2 shrink-0">
+                <!-- 下載 CSV 按鈕 -->
+                <button onclick="downloadCSV()" class="flex items-center text-xs font-bold px-2.5 py-1.5 rounded border transition-colors shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 focus:outline-none">
+                    <i data-lucide="download" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i>
+                    <span class="hidden sm:inline">下載清單</span>
+                </button>
+
+                <!-- 推薦過濾開關按鈕 -->
+                <button id="toggleRecBtn" class="flex items-center text-xs font-bold px-2.5 py-1.5 rounded border transition-colors shadow-sm bg-white text-slate-600 border-slate-200 hover:bg-slate-50 focus:outline-none">
+                    <i data-lucide="star" id="toggleRecIcon" class="w-3.5 h-3.5 text-slate-400 mr-1 transition-colors"></i>
+                    <span class="hidden sm:inline">僅顯示</span>推薦
+                </button>
+            </div>
+        </div>
+
+        <!-- 載入中狀態 -->
+        <div id="loadingState" class="text-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
+            <i data-lucide="loader-2" class="mx-auto h-8 w-8 text-blue-600 animate-spin mb-3"></i>
+            <h3 class="text-base font-bold text-slate-900" id="loadingText">正在連接 Google Sheet 取回最新資料...</h3>
+        </div>
+
+        <!-- 查無/錯誤資料狀態 -->
+        <div id="emptyState" class="hidden text-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
+            <div class="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" id="emptyStateIconBox">
+                <i data-lucide="package-search" class="h-8 w-8 text-slate-400" id="emptyStateIcon"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900" id="emptyStateTitle">找不到符合的團隊</h3>
+            <p class="mt-1 text-sm text-slate-500 px-4" id="emptyStateDesc">請嘗試調整搜尋關鍵字或地區過濾條件。</p>
+        </div>
+
+        <!-- 團隊列表 -->
+        <div id="teamList" class="flex flex-col gap-3.5 hidden">
+            <!-- 動態生成 -->
+        </div>
+    </main>
+
+    <!-- 彈跳視窗 (Modal) -->
+    <div id="teamModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6" style="background-color: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);">
+        <div id="modalBox" class="bg-slate-100 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden border border-slate-300">
+            
+            <!-- 標題區 (頂部) -->
+            <div class="bg-white border-b border-slate-200 px-5 sm:px-8 py-5 relative flex-shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 z-10 shadow-sm">
+                <div class="flex-grow min-w-0 w-full sm:pr-6">
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <span id="modalIdTag" class="px-2 py-0.5 bg-slate-800 text-white text-xs font-bold rounded flex items-center shrink-0 border border-slate-900">
+                            <span id="modalIdText">001</span>
+                        </span>
+                        <span id="modalLocationTag" class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded flex items-center shrink-0 border border-blue-100">
+                            <i data-lucide="map-pin" class="w-3 h-3 mr-1"></i> <span id="modalLocationText">地區</span>
+                        </span>
+                        <span id="modalTeamTypeTag" class="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs font-bold rounded hidden items-center shrink-0 border border-purple-100 truncate max-w-[150px]" title="團隊類型">
+                            <i data-lucide="users" class="w-3 h-3 mr-1"></i> <span id="modalTeamTypeText">團隊類型</span>
+                        </span>
+                        <span id="modalPlanTag" class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded flex items-center shrink-0 border border-slate-200 truncate max-w-xs" title="計畫名稱">
+                            <span id="modalPlanText">計畫名稱</span>
+                        </span>
+                        <span id="modalRecommendedTag" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded items-center shadow-sm shrink-0">
+                            <i data-lucide="star" class="w-3 h-3 mr-1" style="fill: currentColor;"></i> 會內推薦
+                        </span>
+                    </div>
+                    <h3 id="modalTitle" class="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight mb-3">單位／品牌名稱</h3>
+                    
+                    <!-- 銷售網站與雲端連結 絕對置頂區塊 -->
+                    <div id="modalTopLinksContainer" class="flex flex-wrap gap-2.5">
+                        <!-- 動態插入網站按鈕 -->
+                    </div>
+                </div>
+                
+                <button onclick="closeModal()" class="absolute top-4 right-4 sm:static text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-200 border border-slate-200 p-2 rounded-full transition-colors shrink-0 focus:outline-none">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <!-- 內容區 -->
+            <div class="px-3 sm:px-6 py-4 sm:py-6 overflow-y-auto flex-grow custom-scrollbar">
+                
+                <div class="flex flex-col gap-4 sm:gap-6 mb-6">
+                    <!-- 核心合作提案內容與照片/網站專區 -->
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 sm:p-6 border border-blue-200 shadow-sm relative overflow-hidden flex flex-col md:flex-row gap-6">
+                        <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-600"></div>
+                        
+                        <!-- 左側：提案內容 -->
+                        <div class="flex-grow flex flex-col">
+                            <h4 class="text-base sm:text-lg font-extrabold text-blue-900 flex items-center gap-2 mb-3">
+                                <i data-lucide="package-check" class="w-6 h-6 text-blue-600"></i> 提案合作產品 / 服務
+                            </h4>
+                            <p id="modalProduct" class="text-slate-800 font-bold leading-relaxed whitespace-pre-wrap"></p>
+                        </div>
+
+                        <!-- 右側：商品或通路照片區與銷售網站 (靠上對齊 justify-start) -->
+                        <div class="md:w-1/3 lg:w-2/5 shrink-0 flex flex-col items-start justify-start border-t md:border-t-0 md:border-l border-blue-200/50 pt-4 md:pt-0 md:pl-6 relative z-10">
+                            <!-- 照片區塊 -->
+                            <div class="w-full mb-5">
+                                <h5 class="text-xs font-bold text-blue-700 mb-2.5 flex items-center gap-1.5 bg-blue-100/50 px-2 py-1 rounded w-fit">
+                                    <i data-lucide="image" class="w-4 h-4"></i> 商品或通路照片
+                                </h5>
+                                <div id="modalProductPhotoContent" class="w-full flex flex-col items-start"></div>
+                            </div>
+                            
+                            <!-- 銷售網站區塊 -->
+                            <div class="w-full">
+                                <h5 class="text-xs font-bold text-blue-700 mb-2.5 flex items-center gap-1.5 bg-blue-100/50 px-2 py-1 rounded w-fit">
+                                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> 銷售網站
+                                </h5>
+                                <div id="modalWebsiteContent" class="w-full flex flex-col items-start"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 各產業商品/服務詳細展示 -->
+                    <div id="modalCategoriesSection" class="hidden">
+                        <h4 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 mb-3 pl-1">
+                            <i data-lucide="layers" class="w-5 h-5 text-indigo-600"></i> 各產業詳細商品 / 服務型錄
+                        </h4>
+                        <div id="modalCategoriesContent" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 動態插入 -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col lg:flex-row gap-4 sm:gap-6 mb-6">
+                    
+                    <div class="flex-grow flex flex-col gap-4 sm:gap-6 lg:w-2/3">
+                        <!-- 合作願景與期待 -->
+                        <div class="bg-white rounded-xl p-5 sm:p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
+                            <h4 class="text-sm font-extrabold text-amber-600 flex items-center gap-2 mb-3">
+                                <i data-lucide="lightbulb" class="w-5 h-5"></i> 合作願景與期待
+                            </h4>
+                            <p id="modalExpectation" class="text-slate-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap bg-amber-50/50 p-4 rounded-lg border border-amber-100/50"></p>
+                        </div>
+                        
+                        <!-- SDGs -->
+                        <div id="modalSdgContainer" class="bg-white rounded-xl p-5 sm:p-6 border border-slate-200 shadow-sm hidden">
+                            <h4 class="text-sm font-extrabold text-teal-600 flex items-center gap-2 mb-3">
+                                <i data-lucide="globe-2" class="w-5 h-5"></i> 對應之 SDGs 永續發展目標
+                            </h4>
+                            <div id="modalSdgTags"></div>
+                        </div>
+                    </div>
+
+                    <!-- 聯絡資訊 -->
+                    <div class="lg:w-1/3 flex flex-col gap-4 sm:gap-6 shrink-0">
+                        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm h-full">
+                            <h4 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 mb-4 border-b border-slate-100 pb-2">
+                                <i data-lucide="contact" class="w-4 h-4 text-slate-500"></i> 團隊聯絡資訊
+                            </h4>
+                            <ul class="space-y-4">
+                                <li class="flex items-start gap-3 w-full">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="user" class="w-4 h-4 text-slate-600"></i></div>
+                                    <div class="w-full overflow-hidden">
+                                        <p class="text-xs text-slate-500 font-medium">聯絡人</p>
+                                        <div id="modalContactPerson" class="text-sm font-bold text-slate-800 whitespace-pre-wrap mt-0.5 select-text"></div>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3 w-full">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="phone" class="w-4 h-4 text-slate-600"></i></div>
+                                    <div class="w-full overflow-hidden">
+                                        <p class="text-xs text-slate-500 font-medium">電話</p>
+                                        <!-- 保留完整格式、多行顯示、支援滑鼠反白 -->
+                                        <div id="modalPhone" class="text-sm font-bold text-slate-800 tracking-wide whitespace-pre-wrap mt-0.5 select-text"></div>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3 w-full">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="mail" class="w-4 h-4 text-slate-600"></i></div>
+                                    <div class="w-full overflow-hidden">
+                                        <p class="text-xs text-slate-500 font-medium">電子信箱</p>
+                                        <!-- 單純文字呈現，藍色且可換行複製 -->
+                                        <div id="modalEmail" class="text-sm font-bold text-blue-600 break-all whitespace-pre-wrap mt-0.5 select-text"></div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 其他補充資訊 -->
+                <div id="otherInfoSection" class="bg-white rounded-xl p-5 sm:p-6 border border-slate-200 shadow-sm mb-4">
+                    <h4 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                        <i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i> 其他補充資料
+                    </h4>
+                    <div id="modalOtherContent" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-x-8 sm:gap-y-6">
+                        <!-- 動態插入 -->
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- 底部按鈕區 -->
+            <div class="px-5 sm:px-8 py-3 sm:py-4 bg-white border-t border-slate-200 flex justify-end flex-shrink-0">
+                <button onclick="closeModal()" class="w-full sm:w-auto px-8 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-bold transition-colors shadow-sm focus:outline-none">
+                    關閉資料卡
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🚀 設定區：Google Sheet 原始編輯連結
+        // ==========================================
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wkXuV1hweIW2tA6GMuHQ8gkjvCeVBj-VfHROyAlr358/edit?gid=0#gid=0'; 
+        let allTeamsData = []; 
+        let showOnlyRecommended = false; // 過濾開關狀態
+
+        // 會內推薦名單 (按照此陣列的順序進行推薦排序)
+        const recommendedTeamsList = [
+            '天賜糧源', '農協力企業社', '林果園有限公司', '三小文創有限公司／三小市集',
+            '二號空間藝文事業有限公司', '社團法人南投縣仁愛鄉東岸部落產業促進發展協會',
+            '這裡好好生活所', '雙連梨', '微醺農場/微醺農場', '通利水產行（壹顆蜆）',
+            '海洋沅實業有限公司', '洄遊吧 FISH BAR', '青出宜蘭有限公司', '禾子企業有限公司/和禾聚落',
+            '股份魚鄉', '宏展農業行銷科技有限公司/宏展農場', '大山北月', '山号整合設計有限公司',
+            '島之島事業有限公司', '郡碩農創有限公司/圓緣不絕', '迎蜂有限公司'
+        ];
+
+        // 19大產業分類清單
+        const industryCategories = [
+            { id: 'A', title: '農、林、漁、牧業' },
+            { id: 'B', title: '礦業及土石採取業' },
+            { id: 'C', title: '製造業' },
+            { id: 'D', title: '電力及燃氣供應業' },
+            { id: 'E', title: '用水供應及污染整治業' },
+            { id: 'F', title: '營建工程業' },
+            { id: 'G', title: '批發及零售業' },
+            { id: 'H', title: '運輸及倉儲業' },
+            { id: 'I', title: '住宿及餐飲業' },
+            { id: 'J', title: '出版影音及資通訊業' },
+            { id: 'K', title: '金融及保險業' },
+            { id: 'L', title: '不動產業' },
+            { id: 'M', title: '專業、科學及技術服務業' },
+            { id: 'N', title: '支援服務業' },
+            { id: 'O', title: '公共行政及國防' },
+            { id: 'P', title: '教育業' },
+            { id: 'Q', title: '醫療保健及社會工作服務業' },
+            { id: 'R', title: '藝術、娛樂及休閒服務業' },
+            { id: 'S', title: '其他服務業' }
+        ];
+
+        // 黑名單關鍵字
+        const excludedKeywords = [
+            '個人資料蒐集同意', '我已完整閱讀以上個人資料蒐集', '處理及利用告知事項',
+            '並了解相關權利義務', '填答本次回填資料是否同意', '有無需要政府或中介單位協助之事項',
+            '時間', '填答秒數', 'IP紀錄', 'IP', 'Hash'
+        ];
+
+        const searchInput = document.getElementById('searchInput');
+        const locationSelect = document.getElementById('locationSelect');
+        const teamList = document.getElementById('teamList');
+        const emptyState = document.getElementById('emptyState');
+        const loadingState = document.getElementById('loadingState');
+        const resultCount = document.getElementById('resultCount');
+        const resultTitle = document.getElementById('resultTitle');
+
+        const toggleRecBtn = document.getElementById('toggleRecBtn');
+        const toggleRecIcon = document.getElementById('toggleRecIcon');
+
+        // Excel 欄位轉數字 index 的輔助函數 (A=0, B=1... K=10, P=15)
+        function colToIdx(colStr) {
+            let idx = 0;
+            for (let i = 0; i < colStr.length; i++) {
+                idx = idx * 26 + (colStr.charCodeAt(i) - 64);
+            }
+            return idx - 1;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            fetchSheetData();
+            
+            searchInput.addEventListener('input', renderCards);
+            locationSelect.addEventListener('change', renderCards);
+            
+            toggleRecBtn.addEventListener('click', () => {
+                showOnlyRecommended = !showOnlyRecommended;
+                if (showOnlyRecommended) {
+                    toggleRecBtn.classList.replace('bg-white', 'bg-amber-50');
+                    toggleRecBtn.classList.replace('text-slate-600', 'text-amber-700');
+                    toggleRecBtn.classList.replace('border-slate-200', 'border-amber-300');
+                    toggleRecIcon.classList.replace('text-slate-400', 'text-amber-500');
+                    toggleRecIcon.style.fill = 'currentColor';
+                } else {
+                    toggleRecBtn.classList.replace('bg-amber-50', 'bg-white');
+                    toggleRecBtn.classList.replace('text-amber-700', 'text-slate-600');
+                    toggleRecBtn.classList.replace('border-amber-300', 'border-slate-200');
+                    toggleRecIcon.classList.replace('text-amber-500', 'text-slate-400');
+                    toggleRecIcon.style.fill = 'none';
+                }
+                renderCards();
+            });
+        });
+
+        function showErrorState(msg, isError = true) {
+            loadingState.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            document.getElementById('emptyStateTitle').textContent = isError ? '無法抓取資料' : '找不到符合的團隊';
+            document.getElementById('emptyStateDesc').textContent = msg;
+            
+            const iconBox = document.getElementById('emptyStateIconBox');
+            const icon = document.getElementById('emptyStateIcon');
+            if (isError) {
+                iconBox.className = "bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3";
+                icon.setAttribute('data-lucide', 'alert-triangle');
+                icon.className = "h-8 w-8 text-red-500";
+            } else {
+                iconBox.className = "bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3";
+                icon.setAttribute('data-lucide', 'package-search');
+                icon.className = "h-8 w-8 text-slate-400";
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 🧠 API 抓取主資料
+        // ==========================================
+        function fetchSheetData() {
+            if (!SHEET_URL) {
+                showErrorState("未設定 Google Sheet 網址，無法進行抓取。", true);
+                return;
+            }
+
+            const idMatch = SHEET_URL.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (!idMatch) {
+                showErrorState("無效的 Google Sheet 網址格式，無法抓取。", true);
+                return;
+            }
+            
+            const sheetId = idMatch[1];
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+
+            fetch(gvizUrl)
+                .then(res => { if (!res.ok) throw new Error('網路回應錯誤'); return res.text(); })
+                .then(text => {
+                    const jsonMatch = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/);
+                    if (!jsonMatch) throw new Error('無法解析回傳資料格式');
+                    const data = JSON.parse(jsonMatch[1]);
+                    if (!data.table || !data.table.cols || !data.table.rows) throw new Error('資料表格式錯誤');
+
+                    const colsData = data.table.cols;
+                    const rawData = data.table.rows.map(row => {
+                        const rowObj = { _cellsByIndex: [], _cellsByLetter: {} };
+                        colsData.forEach((col, idx) => {
+                            const cell = row.c ? row.c[idx] : null;
+                            const cellValue = cell ? (cell.f !== undefined && cell.f !== null ? String(cell.f) : (cell.v !== undefined && cell.v !== null ? String(cell.v) : '')) : '';
+                            rowObj._cellsByIndex[idx] = cellValue;
+                            if (col && col.id) {
+                                rowObj._cellsByLetter[col.id] = cellValue;
+                            }
+                            if (col && col.label) {
+                                rowObj[col.label] = cellValue; // 保留標題對應以利其他欄位顯示
+                            }
+                        });
+                        return rowObj;
+                    });
+
+                    processData(rawData, colsData);
+                })
+                .catch(err => {
+                    console.error(err);
+                    showErrorState("無法抓取 Google Sheet 資料。請確認權限已設定為「知道連結的人均可檢視」。", true);
+                });
+        }
+
+        // 處理並精準抓取欄位
+        function processData(rawData, colsData) {
+            allTeamsData = rawData.map((row, index) => {
+                
+                // 安全讀取指定欄位 (使用 Google 原生 Column ID 或是索引 fallback)
+                function getCellByLetter(letter) {
+                    if (row._cellsByLetter && row._cellsByLetter[letter] !== undefined) {
+                        return row._cellsByLetter[letter];
+                    }
+                    return row._cellsByIndex[colToIdx(letter)] || '';
+                }
+
+                function getColLabelByLetter(letter) {
+                    const colInfo = colsData.find(c => c && c.id === letter);
+                    if (colInfo && colInfo.label) return colInfo.label;
+                    const fallbackCol = colsData[colToIdx(letter)];
+                    return fallbackCol ? fallbackCol.label : '';
+                }
+
+                const getFieldStrict = (exactMatches, includesKeywords) => {
+                    let foundKey = Object.keys(row).find(key => key !== '_cellsByIndex' && key !== '_cellsByLetter' && exactMatches.some(m => key === m || key.includes(m)));
+                    if (!foundKey && includesKeywords) {
+                        foundKey = Object.keys(row).find(key => key !== '_cellsByIndex' && key !== '_cellsByLetter' && includesKeywords.some(kw => key.toLowerCase().includes(kw.toLowerCase())));
+                    }
+                    return { key: foundKey || null, val: foundKey ? String(row[foundKey]).trim() : '' };
+                };
+
+                // 檢查是否為空行
+                const isEmpty = Object.keys(row).filter(k => k !== '_cellsByIndex' && k !== '_cellsByLetter').every(k => row[k] === '');
+                if (isEmpty) return null;
+
+                const fName = getFieldStrict(['單位／品牌名稱'], ['團隊名稱', '公司名稱']);
+                const fLocation = getFieldStrict(['請問組織所在縣市跟鄉鎮'], ['縣市', '地區']);
+                const fTeamType = getFieldStrict(['地方創生團隊類型', '組織類型', '團隊類型'], ['團隊類型']);
+                const fPlan = getFieldStrict(['計畫名稱'], ['專案名稱']);
+                const fProduct = getFieldStrict(['預計提出與「三商餐飲集團」合作的產品或服務'], ['預計合作產品', '提案產品']);
+                const fDesc = getFieldStrict(['對於與企業合作，有無特別期待或顧慮'], ['合作期待']);
+                
+                // ★ 1. 精準對位：聯絡電話必須是 K 欄 (保留所有格式，僅判斷純數字的開頭補0) ★
+                let phoneStr = getCellByLetter('K').trim();
+                // 如果 K 欄真的抓不到，啟動備用防護，用標題去抓
+                if (!phoneStr) {
+                    const fPhoneFallback = getFieldStrict(['電話', '手機', '聯絡電話'], []);
+                    phoneStr = fPhoneFallback.val.trim();
+                }
+
+                let cleanPhone = phoneStr.replace(/[\s\-()]/g, ''); 
+                if (cleanPhone.startsWith('9') && cleanPhone.length >= 9 && cleanPhone.length <= 10) {
+                    // 若開頭是9且長度像手機，幫忙補0
+                    phoneStr = '0' + phoneStr; 
+                }
+                const fPhoneKey = getColLabelByLetter('K') || '電話';
+
+                // ★ 2. 精準對位：限定照片必須來自指定的 19 個欄位 ★
+                const targetPhotoCols = ['P', 'Z', 'AJ', 'AT', 'BC', 'BM', 'BX', 'CH', 'CR', 'DB', 'DL', 'DV', 'EF', 'EP', 'EZ', 'FI', 'FS', 'GC', 'GM'];
+                let combinedPhotos = [];
+                let usedPhotoKeys = [];
+                
+                targetPhotoCols.forEach(colLetter => {
+                    const val = getCellByLetter(colLetter).trim();
+                    const label = getColLabelByLetter(colLetter);
+                    if (label && !usedPhotoKeys.includes(label)) usedPhotoKeys.push(label);
+                    
+                    if (val && val !== '') {
+                        combinedPhotos.push(val);
+                    }
+                });
+                
+                const fPerson = getFieldStrict(['聯絡人'], ['姓名', '代表人']);
+                const fEmail = getFieldStrict(['聯絡 Email', '電子信箱', '信箱', 'email'], []);
+                const fWebsite = getFieldStrict(['銷售網站'], ['官方網站', '官網']);
+                const fFolder = getFieldStrict(['雲端', '資料夾'], ['簡報']); 
+                const fImage = getFieldStrict(['圖片網址', '照片', 'image'], []);
+                const fSdg = getFieldStrict(['對應之 SDGs'], ['sdg', '永續指標']);
+
+                // ★ 3. 依據內建推薦名單判斷是否推薦，並記錄原始排序權重 ★
+                let recIndex = Infinity;
+                const isRecommended = recommendedTeamsList.some((recName, idx) => {
+                    const match = (fName.val && fName.val.includes(recName)) || (fName.val && recName.includes(fName.val));
+                    if (match) {
+                        recIndex = idx;
+                        return true;
+                    }
+                    return false;
+                });
+
+                // 地區縮寫供下拉選單使用
+                let locShort = "未分類";
+                if (fLocation.val) locShort = fLocation.val.replace(/台/g, '臺').substring(0, 3);
+
+                // 嘗試找出一張縮圖供卡片列表使用
+                const firstValidUrl = combinedPhotos.find(url => url.includes('http') || url.includes('drive.google.com'));
+                const fallbackImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmNWY5Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2NiZDVlMSIgZG1pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7Qm+WckDwvdGV4dD48L3N2Zz4=';
+
+                return {
+                    _id: index,
+                    _originalData: row,
+                    _usedKeys: [fName.key, fLocation.key, fTeamType.key, fPlan.key, fProduct.key, fDesc.key, fPerson.key, fPhoneKey, fEmail.key, fWebsite.key, fFolder.key, fImage.key, fSdg.key, ...usedPhotoKeys].filter(Boolean),
+                    name: fName.val || `未命名團隊`,
+                    orgLocation: fLocation.val || '',
+                    locFilter: locShort,
+                    teamType: fTeamType.val,
+                    planName: fPlan.val || '地方創生計畫',
+                    productName: fProduct.val || '', 
+                    mainProductPhoto: combinedPhotos.join('\n\n'), // 將所有特定欄位的內容合併
+                    description: fDesc.val || '',
+                    contactPerson: fPerson.val || '',
+                    phone: phoneStr || '', // 已經補0並保留原始格式的電話
+                    email: fEmail.val || '',
+                    websiteUrl: fWebsite.val,
+                    folderUrl: fFolder.val,
+                    sdgs: fSdg.val,
+                    isRecommended: isRecommended,
+                    recIndex: recIndex,
+                    imageUrl: firstValidUrl || fallbackImage
+                };
+            }).filter(Boolean);
+
+            loadingState.classList.add('hidden');
+            initLocationSelect();
+            renderCards();
+        }
+
+        function initLocationSelect() {
+            const locs = new Set(allTeamsData.map(item => item.locFilter).filter(Boolean));
+            const locationsArray = ['全部地區', ...Array.from(locs)];
+            locationSelect.innerHTML = ''; 
+            locationsArray.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc === '全部地區' ? '全部' : loc;
+                option.textContent = loc;
+                locationSelect.appendChild(option);
+            });
+        }
+
+        // ==========================================
+        // 📥 下載 CSV 功能
+        // ==========================================
+        function downloadCSV() {
+            if (allTeamsData.length === 0) return;
+            
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const selectedLocation = locationSelect.value;
+
+            // 取得當前過濾並排序後的團隊名單
+            const filteredTeams = allTeamsData
+                .filter(team => {
+                    if (showOnlyRecommended && !team.isRecommended) return false;
+                    const fullTextSearch = Object.keys(team._originalData)
+                        .filter(k => k !== '_cellsByIndex' && k !== '_cellsByLetter')
+                        .map(k => team._originalData[k]).join(' ').toLowerCase();
+                    return fullTextSearch.includes(searchTerm) && (selectedLocation === '全部' || team.locFilter.includes(selectedLocation));
+                })
+                .sort((a, b) => {
+                    if (a.isRecommended && !b.isRecommended) return -1;
+                    if (!a.isRecommended && b.isRecommended) return 1;
+                    if (a.isRecommended && b.isRecommended) return a.recIndex - b.recIndex;
+                    return a._id - b._id;
+                });
+
+            let csvContent = "\uFEFF"; 
+            csvContent += "編號,會內推薦,單位/品牌名稱,地區,團隊類型,計畫名稱,提案合作產品/服務,聯絡人,電話,Email,官網/銷售連結\n";
+
+            filteredTeams.forEach((team, idx) => {
+                const displayId = String(idx + 1).padStart(3, '0');
+                const safeWrap = (text) => `"${(text || '').replace(/"/g, '""')}"`;
+                
+                const row = [
+                    displayId,
+                    team.isRecommended ? '★' : '',
+                    safeWrap(team.name),
+                    safeWrap(team.orgLocation),
+                    safeWrap(team.teamType),
+                    safeWrap(team.planName),
+                    safeWrap(team.productName),
+                    safeWrap(team.contactPerson),
+                    safeWrap(team.phone),
+                    safeWrap(team.email),
+                    safeWrap(team.websiteUrl)
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "國發會青年團隊採購清單.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 渲染首頁卡片
+        function renderCards() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const selectedLocation = locationSelect.value;
+
+            // 過濾與動態排序
+            const filteredTeams = allTeamsData
+                .filter(team => {
+                    if (showOnlyRecommended && !team.isRecommended) return false;
+                    const fullTextSearch = Object.keys(team._originalData)
+                        .filter(k => k !== '_cellsByIndex' && k !== '_cellsByLetter')
+                        .map(k => team._originalData[k]).join(' ').toLowerCase();
+                    return fullTextSearch.includes(searchTerm) && (selectedLocation === '全部' || team.locFilter.includes(selectedLocation));
+                })
+                .sort((a, b) => {
+                    // 推薦名單優先
+                    if (a.isRecommended && !b.isRecommended) return -1;
+                    if (!a.isRecommended && b.isRecommended) return 1;
+                    // 同為推薦依照提供的自訂清單排序
+                    if (a.isRecommended && b.isRecommended) return a.recIndex - b.recIndex;
+                    return a._id - b._id;
+                });
+
+            // 賦予動態 001, 002... 編號
+            filteredTeams.forEach((team, idx) => {
+                team.displayId = String(idx + 1).padStart(3, '0');
+            });
+
+            resultTitle.textContent = (searchTerm || selectedLocation !== '全部' || showOnlyRecommended) ? '搜尋結果' : '團隊提案列表';
+            resultCount.textContent = `${filteredTeams.length}`;
+
+            if (filteredTeams.length === 0) {
+                teamList.classList.add('hidden');
+                showErrorState("請嘗試調整搜尋關鍵字、地區或推薦過濾條件。", false);
+            } else {
+                teamList.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                
+                teamList.innerHTML = filteredTeams.map(team => `
+                    <div onclick="openModal(${team._id})" class="list-item-card flex flex-col sm:flex-row p-4 sm:p-5 bg-white rounded-xl border ${team.isRecommended ? 'border-amber-300 ring-1 ring-amber-100 shadow-md' : 'border-slate-200'} gap-4 sm:gap-5 relative">
+                        <div class="sm:w-1/3 lg:w-1/4 flex flex-row sm:flex-col gap-3 sm:gap-2 shrink-0 border-b sm:border-b-0 sm:border-r border-slate-100 pb-3 sm:pb-0 sm:pr-4">
+                            <div class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center relative">
+                                ${team.imageUrl.includes('drive.google.com/open') || team.imageUrl.includes('drive.google.com/file') || team.imageUrl.includes('drive.google.com/thumbnail') ? `
+                                    <div class="absolute inset-0 bg-blue-50 flex items-center justify-center">
+                                        <i data-lucide="folder-open" class="w-8 h-8 text-blue-400"></i>
+                                    </div>
+                                ` : `
+                                    <img src="${team.imageUrl}" alt="${team.name}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmNWY5Ii8+PC9zdmc+'" />
+                                `}
+                            </div>
+                            <div class="flex flex-col justify-center min-w-0">
+                                <div class="flex items-center gap-1.5 mb-1 sm:mb-2 flex-wrap">
+                                    <span class="bg-slate-800 text-white px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold shrink-0">${team.displayId}</span>
+                                    ${team.isRecommended ? `<span class="shrink-0 text-amber-500" title="會內推薦"><i data-lucide="star" class="w-3.5 h-3.5" style="fill: currentColor;"></i></span>` : ''}
+                                    <span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold shrink-0 truncate" title="${team.orgLocation}">${team.orgLocation}</span>
+                                    ${team.teamType ? `<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold shrink-0 truncate max-w-[150px]" title="${team.teamType}">${team.teamType}</span>` : ''}
+                                </div>
+                                <h3 class="text-base sm:text-lg font-extrabold text-slate-900 line-clamp-2 leading-tight mb-1">${team.name}</h3>
+                                <p class="text-xs text-slate-400 line-clamp-1" title="${team.planName}">${team.planName}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex-grow min-w-0 flex flex-col justify-center gap-3">
+                            <div class="bg-blue-50/50 rounded-lg p-3 border border-blue-100/50">
+                                <h4 class="text-xs font-bold text-blue-700 flex items-center gap-1.5 mb-1">
+                                    <i data-lucide="package-check" class="w-3.5 h-3.5"></i> 預計提出與「三商餐飲集團」合作的產品或服務
+                                </h4>
+                                <p class="text-sm font-bold text-slate-800 line-clamp-2">${team.productName}</p>
+                            </div>
+                            <div class="bg-amber-50/30 rounded-lg p-3 border border-amber-100/50">
+                                <h4 class="text-xs font-bold text-amber-700 flex items-center gap-1.5 mb-1">
+                                    <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> 合作願景與期待
+                                </h4>
+                                <p class="text-sm text-slate-600 line-clamp-2">${team.description}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-300 hidden md:block">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 🔧 解析純文字 URL 與 Google Drive 圖片/資料夾
+        // ==========================================
+        function parseContentToHtml(text) {
+            // 自動幫沒有 http 開頭的 drive 連結補上
+            let processedText = text.replace(/(^|[\s\n,，。、])(drive\.google\.com[^\s\n,，。、]+)/g, '$1https://$2');
+            
+            const urlRegex = /(https?:\/\/[^\s\n,，。、]+)/g;
+            let imagesHtml = '';
+            
+            let formattedText = processedText.replace(urlRegex, (url) => {
+                let fileId = null;
+                const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) || url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+                const driveFolderMatch = url.match(/drive\.google\.com\/.*folders\/([a-zA-Z0-9_-]+)/);
+                
+                // 1. 若為 Google Drive 資料夾
+                if (driveFolderMatch) {
+                    imagesHtml += `
+                        <a href="${url}" target="_blank" class="block mt-2 w-full sm:max-w-full p-4 rounded-xl border border-blue-200 bg-blue-50 shadow-sm hover:shadow-md hover:bg-blue-100 transition-all flex flex-col items-center justify-center text-center shrink-0">
+                            <i data-lucide="folder-open" class="w-8 h-8 text-blue-500 mb-1"></i>
+                            <span class="text-blue-700 font-bold text-sm">點擊開啟雲端資料夾</span>
+                        </a>
+                    `;
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="folder" class="w-4 h-4"></i>雲端資料夾連結</a>`;
+                }
+                // ★ 2. 若為 Google Drive 單一檔案 (使用 Thumbnail API 確保能預覽 PDF/圖片) ★
+                else if (driveFileMatch) {
+                    fileId = driveFileMatch[1];
+                    imagesHtml += `
+                        <a href="${url}" target="_blank" class="block mt-2 w-full sm:max-w-full rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all relative group bg-slate-50 shrink-0 flex items-center justify-center min-h-[100px]">
+                            <!-- 使用 Thumbnail API 避免 Google 安全掃描導致破圖 -->
+                            <img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w800" alt="附件圖片" class="w-full h-auto max-h-48 object-contain" onerror="this.style.display='none'; this.nextElementSibling.nextElementSibling.style.display='flex';"/>
+                            
+                            <div class="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center pointer-events-none">
+                                <i data-lucide="zoom-in" class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity"></i>
+                            </div>
+                            
+                            <!-- 防呆機制：若 Thumbnail 也無法預覽，顯示此替代區塊 (連結依然存在) -->
+                            <div class="hidden absolute inset-0 flex-col items-center justify-center text-slate-400 p-4 text-center pointer-events-none">
+                                <i data-lucide="file-image" class="w-8 h-8 mb-1 opacity-50"></i>
+                                <span class="text-xs font-medium">無法預覽圖片，請點擊開啟</span>
+                            </div>
+                        </a>
+                    `;
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i>檢視雲端圖片</a>`;
+                } 
+                // 3. 一般圖檔
+                else if (url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
+                    imagesHtml += `
+                        <a href="${url}" target="_blank" class="block mt-2 w-full sm:max-w-full rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all relative group bg-slate-50 shrink-0 flex items-center justify-center min-h-[100px]">
+                            <img src="${url}" alt="圖片" class="w-full h-auto max-h-48 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                            <div class="hidden absolute inset-0 flex-col items-center justify-center text-slate-400 p-4 text-center pointer-events-none">
+                                <i data-lucide="image-off" class="w-8 h-8 mb-1 opacity-50"></i>
+                                <span class="text-xs font-medium">圖片載入失敗，請點擊開啟</span>
+                            </div>
+                        </a>
+                    `;
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i>檢視圖片</a>`;
+                } 
+                // 4. 一般連結
+                else {
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="external-link" class="w-4 h-4"></i>開啟連結</a>`;
+                }
+            });
+
+            return {
+                textHtml: formattedText.replace(/\n/g, '<br>'),
+                imagesHtml: imagesHtml !== '' ? `<div class="flex flex-col gap-3 w-full justify-start md:justify-start mt-2">${imagesHtml}</div>` : ''
+            };
+        }
+
+        // ==========================================
+        // 🪟 彈跳視窗 (Modal) 詳細資料渲染
+        // ==========================================
+        function openModal(teamId) {
+            const team = allTeamsData.find(t => t._id === teamId);
+            if (!team) return;
+
+            // 1. 設置頭部與標籤
+            document.getElementById('modalIdText').textContent = team.displayId;
+            document.getElementById('modalTitle').textContent = team.name;
+            document.getElementById('modalLocationText').textContent = team.orgLocation;
+            document.getElementById('modalPlanText').textContent = team.planName;
+            
+            const typeTag = document.getElementById('modalTeamTypeTag');
+            const typeText = document.getElementById('modalTeamTypeText');
+            if (team.teamType) {
+                typeText.textContent = team.teamType;
+                typeTag.classList.remove('hidden');
+                typeTag.classList.add('inline-flex');
+            } else {
+                typeTag.classList.add('hidden');
+                typeTag.classList.remove('inline-flex');
+            }
+            
+            const recTag = document.getElementById('modalRecommendedTag');
+            if (team.isRecommended) { recTag.classList.remove('hidden'); recTag.classList.add('inline-flex'); } 
+            else { recTag.classList.add('hidden'); recTag.classList.remove('inline-flex'); }
+
+            // 置頂按鈕區 (銷售網站 & 雲端資料夾)
+            const topLinksContainer = document.getElementById('modalTopLinksContainer');
+            let topLinksHtml = '';
+            if (team.websiteUrl && team.websiteUrl.trim() !== '') {
+                let textWithHttp = team.websiteUrl.replace(/(^|[\s\n,，。、])(www\.[^\s\n,，。、]+)/g, '$1https://$2');
+                textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(facebook\.com[^\s\n,，。、]+)/g, '$1https://$2');
+                textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(instagram\.com[^\s\n,，。、]+)/g, '$1https://$2');
+                const urls = textWithHttp.match(/(https?:\/\/[^\s\n,，。、]+)/g);
+                if (urls && urls.length > 0) {
+                    const uniqueUrls = [...new Set(urls)];
+                    uniqueUrls.forEach(url => {
+                        topLinksHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="shopping-cart" class="mr-2 w-4 h-4"></i> 前往銷售網站</a>`;
+                    });
+                }
+            }
+            if (team.folderUrl && team.folderUrl.startsWith('http')) {
+                topLinksHtml += `<a href="${team.folderUrl}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="folder-open" class="mr-2 w-4 h-4"></i> 雲端資料夾</a>`;
+            }
+            topLinksContainer.innerHTML = topLinksHtml;
+
+            // 2. 設置核心合作提案內容 (動態調整字型大小)
+            const productEl = document.getElementById('modalProduct');
+            productEl.textContent = team.productName;
+            if (team.productName.length > 60) {
+                productEl.className = "text-slate-800 font-bold text-sm sm:text-base leading-relaxed whitespace-pre-wrap";
+            } else {
+                productEl.className = "text-slate-800 font-bold text-lg sm:text-xl leading-relaxed whitespace-pre-wrap";
+            }
+            
+            // ★ 處理主要商品照片區塊與銷售網站 (右側面板 靠上對齊) ★
+            const parsedMainPhoto = parseContentToHtml(team.mainProductPhoto || '');
+            const photoContent = document.getElementById('modalProductPhotoContent');
+            const websiteContent = document.getElementById('modalWebsiteContent');
+            
+            // 照片區塊
+            if (team.mainProductPhoto && team.mainProductPhoto.trim() !== '') {
+                let htmlContent = '';
+                let pureText = parsedMainPhoto.textHtml.replace(/<a[^>]*>.*?<\/a>/g, '').replace(/<br>/g, '').trim();
+                
+                if (pureText) {
+                    htmlContent += `<p class="whitespace-pre-wrap text-slate-700 text-sm font-medium mb-2 w-full break-all">${parsedMainPhoto.textHtml}</p>`;
+                }
+                if (parsedMainPhoto.imagesHtml) {
+                    htmlContent += parsedMainPhoto.imagesHtml;
+                }
+                
+                if(htmlContent) {
+                    photoContent.innerHTML = htmlContent;
+                } else {
+                    photoContent.innerHTML = ``;
+                }
+            } else {
+                photoContent.innerHTML = ``;
+            }
+
+            // 銷售網站區塊 (支援多個網址)
+            let websiteHtml = '';
+            if (team.websiteUrl && team.websiteUrl.trim() !== '') {
+                // 強制為 www 等常見網域補上 http，以利抓取
+                let textWithHttp = team.websiteUrl.replace(/(^|[\s\n,，。、])(www\.[^\s\n,，。、]+)/g, '$1https://$2');
+                textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(facebook\.com[^\s\n,，。、]+)/g, '$1https://$2');
+                textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(instagram\.com[^\s\n,，。、]+)/g, '$1https://$2');
+                
+                const urls = textWithHttp.match(/(https?:\/\/[^\s\n,，。、]+)/g);
+                
+                if (urls && urls.length > 0) {
+                    const uniqueUrls = [...new Set(urls)];
+                    uniqueUrls.forEach(url => {
+                        websiteHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2.5 px-4 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm w-full"><i data-lucide="external-link" class="mr-2 w-4 h-4"></i> 前往銷售網站</a>`;
+                    });
+                } else {
+                    websiteHtml = `<p class="text-sm text-slate-700 whitespace-pre-wrap w-full break-all">${team.websiteUrl}</p>`;
+                }
+            }
+
+            if (websiteHtml === '') {
+                websiteHtml = ``;
+            }
+            websiteContent.innerHTML = websiteHtml;
+
+            // 合作願景
+            document.getElementById('modalExpectation').textContent = team.description;
+
+            // SDGs 完整顯示
+            const sdgContainer = document.getElementById('modalSdgContainer');
+            const sdgTagsDiv = document.getElementById('modalSdgTags');
+            if (team.sdgs && team.sdgs.trim() !== '') {
+                sdgTagsDiv.innerHTML = `<span class="px-4 py-3 bg-teal-50 border border-teal-200 text-teal-800 text-sm font-bold rounded-lg block w-full whitespace-pre-wrap leading-relaxed">${team.sdgs.trim()}</span>`;
+                sdgContainer.classList.remove('hidden');
+            } else { sdgContainer.classList.add('hidden'); }
+
+            // 聯絡資訊
+            // 姓名、電話、Email 拔除 <a> 標籤，純文字、可換行、可反白複製
+            document.getElementById('modalContactPerson').textContent = team.contactPerson || '';
+            document.getElementById('modalPhone').textContent = team.phone || '';
+            
+            const emailEl = document.getElementById('modalEmail');
+            if(team.email && team.email.trim() !== '') {
+                emailEl.textContent = team.email;
+                emailEl.className = 'text-sm font-bold text-blue-600 break-all whitespace-pre-wrap mt-0.5 select-text';
+            } else {
+                emailEl.textContent = '';
+                emailEl.className = 'text-sm font-bold text-slate-400 break-all whitespace-pre-wrap mt-0.5 select-text';
+            }
+
+            // ==========================================
+            // ★ 19 大分類自動抓取並分區顯示 (附帶自動解析圖片與資料夾) ★
+            // ==========================================
+            let categoriesHtml = '';
+            industryCategories.forEach(cat => {
+                const matchingKeys = Object.keys(team._originalData).filter(k => k !== '_cellsByIndex' && k !== '_cellsByLetter' && k.includes(cat.title));
+                let catContentHtml = '';
+                let hasContent = false;
+
+                matchingKeys.forEach(key => {
+                    const val = team._originalData[key];
+                    if (val && val.trim() !== '') {
+                        hasContent = true;
+                        team._usedKeys.push(key); 
+                        
+                        const parsed = parseContentToHtml(val);
+                        
+                        catContentHtml += `
+                            <div class="mb-5 last:mb-0">
+                                <h5 class="text-xs font-bold text-slate-500 mb-2 tracking-wide border-l-2 border-indigo-400 pl-2">${key}</h5>
+                                <div class="text-sm text-slate-800 leading-relaxed font-medium bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 flex flex-col gap-1">
+                                    <div class="whitespace-pre-wrap break-words">${parsed.textHtml}</div>
+                                    ${parsed.imagesHtml}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (hasContent) {
+                    categoriesHtml += `
+                        <div class="bg-white rounded-xl p-5 border border-indigo-100 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors flex flex-col h-full">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-indigo-400"></div>
+                            <h4 class="text-base font-extrabold text-indigo-800 flex items-center gap-2 mb-4 border-b border-indigo-50 pb-3 shrink-0">
+                                <i data-lucide="layers" class="w-5 h-5"></i> ${cat.id}. ${cat.title}
+                            </h4>
+                            <div class="flex-grow">${catContentHtml}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            const categoriesSection = document.getElementById('modalCategoriesSection');
+            const categoriesContainer = document.getElementById('modalCategoriesContent');
+            
+            if (categoriesHtml !== '') {
+                categoriesContainer.innerHTML = categoriesHtml;
+                categoriesSection.classList.remove('hidden');
+            } else {
+                categoriesSection.classList.add('hidden');
+            }
+
+            // 底部「其他表單填寫資料」 (過濾黑名單雜訊)
+            let otherContentHtml = '';
+            let otherCount = 0;
+            
+            for (const [columnName, columnValue] of Object.entries(team._originalData)) {
+                if (columnName === '_cellsByIndex' || columnName === '_cellsByLetter') continue;
+                if (!columnName || columnName.trim() === '' || !columnValue || columnValue.trim() === '') continue;
+                if (team._usedKeys.includes(columnName)) continue;
+                if (excludedKeywords.some(keyword => columnName.includes(keyword))) continue;
+                
+                otherCount++;
+                const parsed = parseContentToHtml(columnValue);
+
+                otherContentHtml += `
+                    <div class="py-3 border-b border-slate-100 last:border-0">
+                        <dt class="text-xs font-bold text-slate-400 mb-1 tracking-wide">${columnName}</dt>
+                        <dd class="text-sm text-slate-800 leading-relaxed font-medium flex flex-col gap-1">
+                            <div class="whitespace-pre-wrap break-words">${parsed.textHtml}</div>
+                            ${parsed.imagesHtml}
+                        </dd>
+                    </div>
+                `;
+            }
+
+            const otherSection = document.getElementById('otherInfoSection');
+            if (otherCount > 0) {
+                document.getElementById('modalOtherContent').innerHTML = otherContentHtml;
+                otherSection.classList.remove('hidden');
+            } else {
+                otherSection.classList.add('hidden');
+            }
+
+            lucide.createIcons();
+            const modal = document.getElementById('teamModal');
+            const modalBox = document.getElementById('modalBox');
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; 
+            modalBox.classList.remove('scale-95', 'opacity-0');
+            modalBox.classList.add('scale-100', 'opacity-100');
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('teamModal');
+            const modalBox = document.getElementById('modalBox');
+            
+            modalBox.classList.remove('scale-100', 'opacity-100');
+            modalBox.classList.add('scale-95', 'opacity-0');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        document.getElementById('teamModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>
