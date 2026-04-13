@@ -157,7 +157,7 @@
                         </div>
 
                         <!-- 右側：商品或通路照片區與銷售網站 (靠上對齊 justify-start) -->
-                        <div class="md:w-1/3 lg:w-2/5 shrink-0 flex flex-col items-start justify-start border-t md:border-t-0 md:border-l border-blue-200/50 pt-4 md:pt-0 md:pl-6 relative z-10">
+                        <div id="modalProductPhotoContainer" class="md:w-1/3 lg:w-2/5 shrink-0 flex flex-col items-start justify-start border-t md:border-t-0 md:border-l border-blue-200/50 pt-4 md:pt-0 md:pl-6 relative z-10">
                             <!-- 照片區塊 -->
                             <div class="w-full mb-5">
                                 <h5 class="text-xs font-bold text-blue-700 mb-2.5 flex items-center gap-1.5 bg-blue-100/50 px-2 py-1 rounded w-fit">
@@ -815,6 +815,20 @@
             }
         }
 
+        // 幫銷售網站等清單提取「去重後」的網址
+        function getUniqueUrls(urls) {
+            const uniqueUrls = [];
+            const seen = new Set();
+            urls.forEach(url => {
+                let key = getDedupeKey(url);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueUrls.push(url);
+                }
+            });
+            return uniqueUrls;
+        }
+
         function parseContentToHtml(text) {
             // 自動幫沒有 http 開頭的 drive 連結補上
             let processedText = text.replace(/(^|[\s\n,，。、])(drive\.google\.com[^\s\n,，。、]+)/g, '$1https://$2');
@@ -822,8 +836,32 @@
             const urlRegex = /(https?:\/\/[^\s\n,，。、]+)/g;
             let imagesHtml = '';
             
+            // 預先計算總數量，以便決定是否要加上 (1), (2)...
+            let allMatches = processedText.match(urlRegex) || [];
+            let uniqueMatches = getUniqueUrls(allMatches);
+            
+            let totalFolders = 0;
+            let totalFiles = 0;
+            let totalLinks = 0;
+            
+            uniqueMatches.forEach(url => {
+                let cleanUrlForMatch = url.replace(/\/+$/, '');
+                if (cleanUrlForMatch.match(/drive\.google\.com\/.*folders\/([a-zA-Z0-9_-]+)/)) {
+                    totalFolders++;
+                } else if (cleanUrlForMatch.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrlForMatch.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) || cleanUrlForMatch.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/) || url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
+                    totalFiles++;
+                } else {
+                    totalLinks++;
+                }
+            });
+
             // 追蹤已經處理過的網址 (去重用)
             let seenUrls = new Set();
+            
+            // 用來標示當前的編號
+            let folderIdx = 0;
+            let fileIdx = 0;
+            let linkIdx = 0;
 
             let formattedText = processedText.replace(urlRegex, (url) => {
                 let key = getDedupeKey(url);
@@ -838,19 +876,24 @@
                 let cleanUrlForMatch = url.replace(/\/+$/, '');
                 const driveFileMatch = cleanUrlForMatch.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrlForMatch.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) || cleanUrlForMatch.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
                 const driveFolderMatch = cleanUrlForMatch.match(/drive\.google\.com\/.*folders\/([a-zA-Z0-9_-]+)/);
+                const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i);
                 
                 // 1. 若為 Google Drive 資料夾
                 if (driveFolderMatch) {
+                    folderIdx++;
+                    let suffix = totalFolders > 1 ? `(${folderIdx})` : '';
                     imagesHtml += `
                         <a href="${url}" target="_blank" class="block mt-2 w-full sm:max-w-full p-4 rounded-xl border border-blue-200 bg-blue-50 shadow-sm hover:shadow-md hover:bg-blue-100 transition-all flex flex-col items-center justify-center text-center shrink-0">
                             <i data-lucide="folder-open" class="w-8 h-8 text-blue-500 mb-1"></i>
-                            <span class="text-blue-700 font-bold text-sm">點擊開啟雲端資料夾</span>
+                            <span class="text-blue-700 font-bold text-sm">點擊開啟雲端資料夾${suffix}</span>
                         </a>
                     `;
-                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="folder" class="w-4 h-4"></i>雲端資料夾連結</a>`;
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="folder" class="w-4 h-4"></i>雲端資料夾連結${suffix}</a>`;
                 }
-                // 2. 若為 Google Drive 單一檔案 (使用 Thumbnail API 確保能預覽 PDF/圖片)
+                // ★ 2. 若為 Google Drive 單一檔案 (使用 Thumbnail API 確保能預覽 PDF/圖片) ★
                 else if (driveFileMatch) {
+                    fileIdx++;
+                    let suffix = totalFiles > 1 ? `(${fileIdx})` : '';
                     fileId = driveFileMatch[1];
                     imagesHtml += `
                         <a href="${url}" target="_blank" class="block mt-2 w-full sm:max-w-full rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all relative group bg-slate-50 shrink-0 flex items-center justify-center min-h-[100px]">
@@ -864,28 +907,32 @@
                             <!-- 防呆機制：若 Thumbnail 也無法預覽，顯示此替代區塊 (連結依然存在) -->
                             <div class="hidden absolute inset-0 flex-col items-center justify-center text-slate-400 p-4 text-center pointer-events-none">
                                 <i data-lucide="file-image" class="w-8 h-8 mb-1 opacity-50"></i>
-                                <span class="text-xs font-medium">無法預覽圖片，請點擊開啟</span>
+                                <span class="text-xs font-medium">無法預覽圖片，請點擊開啟${suffix}</span>
                             </div>
                         </a>
                     `;
-                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i>檢視雲端圖片</a>`;
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i>檢視雲端圖片${suffix}</a>`;
                 } 
                 // 3. 一般圖檔
-                else if (url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
+                else if (isImage) {
+                    fileIdx++;
+                    let suffix = totalFiles > 1 ? `(${fileIdx})` : '';
                     imagesHtml += `
                         <a href="${url}" target="_blank" class="block mt-2 w-full sm:max-w-full rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all relative group bg-slate-50 shrink-0 flex items-center justify-center min-h-[100px]">
                             <img src="${url}" alt="圖片" class="w-full h-auto max-h-48 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
                             <div class="hidden absolute inset-0 flex-col items-center justify-center text-slate-400 p-4 text-center pointer-events-none">
                                 <i data-lucide="image-off" class="w-8 h-8 mb-1 opacity-50"></i>
-                                <span class="text-xs font-medium">圖片載入失敗，請點擊開啟</span>
+                                <span class="text-xs font-medium">圖片載入失敗，請點擊開啟${suffix}</span>
                             </div>
                         </a>
                     `;
-                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i>檢視圖片</a>`;
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="image" class="w-4 h-4"></i>檢視圖片${suffix}</a>`;
                 } 
                 // 4. 一般連結
                 else {
-                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="external-link" class="w-4 h-4"></i>開啟連結</a>`;
+                    linkIdx++;
+                    let suffix = totalLinks > 1 ? `(${linkIdx})` : '';
+                    return `<a href="${url}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all font-bold inline-flex items-center gap-1"><i data-lucide="external-link" class="w-4 h-4"></i>開啟連結${suffix}</a>`;
                 }
             });
 
@@ -893,20 +940,6 @@
                 textHtml: formattedText.replace(/\n/g, '<br>'),
                 imagesHtml: imagesHtml !== '' ? `<div class="flex flex-col gap-3 w-full justify-start md:justify-start mt-2">${imagesHtml}</div>` : ''
             };
-        }
-
-        // 幫銷售網站等清單提取「去重後」的網址
-        function getUniqueUrls(urls) {
-            const uniqueUrls = [];
-            const seen = new Set();
-            urls.forEach(url => {
-                let key = getDedupeKey(url);
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqueUrls.push(url);
-                }
-            });
-            return uniqueUrls;
         }
 
         // ==========================================
@@ -944,24 +977,25 @@
                 let textWithHttp = team.websiteUrl.replace(/(^|[\s\n,，。、])(www\.[^\s\n,，。、]+)/g, '$1https://$2');
                 textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(facebook\.com[^\s\n,，。、]+)/g, '$1https://$2');
                 textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(instagram\.com[^\s\n,，。、]+)/g, '$1https://$2');
-                
                 const urls = textWithHttp.match(/(https?:\/\/[^\s\n,，。、]+)/g);
                 if (urls && urls.length > 0) {
                     const uniqueUrls = getUniqueUrls(urls);
-                    uniqueUrls.forEach(url => {
-                        topLinksHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="shopping-cart" class="mr-2 w-4 h-4"></i> 前往銷售網站</a>`;
+                    uniqueUrls.forEach((url, idx) => {
+                        let suffix = uniqueUrls.length > 1 ? `(${idx + 1})` : '';
+                        topLinksHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="shopping-cart" class="mr-2 w-4 h-4"></i> 前往銷售網站${suffix}</a>`;
                     });
                 }
             }
             
-            // 雲端資料夾置頂去重處理
+            // 雲端資料夾置頂去重與編號處理
             if (team.folderUrl && team.folderUrl.trim() !== '') {
                 let textWithHttpFolder = team.folderUrl.replace(/(^|[\s\n,，。、])(drive\.google\.com[^\s\n,，。、]+)/g, '$1https://$2');
                 const folderUrls = textWithHttpFolder.match(/(https?:\/\/[^\s\n,，。、]+)/g);
                 if (folderUrls && folderUrls.length > 0) {
                     const uniqueFolderUrls = getUniqueUrls(folderUrls);
-                    uniqueFolderUrls.forEach(url => {
-                        topLinksHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="folder-open" class="mr-2 w-4 h-4"></i> 雲端資料夾</a>`;
+                    uniqueFolderUrls.forEach((url, idx) => {
+                        let suffix = uniqueFolderUrls.length > 1 ? `(${idx + 1})` : '';
+                        topLinksHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="folder-open" class="mr-2 w-4 h-4"></i> 雲端資料夾${suffix}</a>`;
                     });
                 }
             }
@@ -980,6 +1014,7 @@
             const parsedMainPhoto = parseContentToHtml(team.mainProductPhoto || '');
             const photoContent = document.getElementById('modalProductPhotoContent');
             const websiteContent = document.getElementById('modalWebsiteContent');
+            const photoContainer = document.getElementById('modalProductPhotoContainer');
             
             // 照片區塊
             if (team.mainProductPhoto && team.mainProductPhoto.trim() !== '') {
@@ -987,7 +1022,7 @@
                 
                 // 去除 HTML 標籤後，進一步去除「雲端」、「連結」等無意義文字，檢查是否還有真正的文字描述
                 let pureText = parsedMainPhoto.textHtml.replace(/<a[^>]*>.*?<\/a>/g, '').replace(/<br>/g, '');
-                let meaninglessTextRemoved = pureText.replace(/[雲端連結照片網址商品通路：:\s]/g, '').trim();
+                let meaninglessTextRemoved = pureText.replace(/[雲端連結照片網址商品通路：:\s()1-9]/g, '').trim();
                 
                 // 如果只剩下空白或無意義的標籤字眼，就不印出這段多餘的文字
                 if (meaninglessTextRemoved.length > 0) {
@@ -1007,7 +1042,7 @@
                 photoContent.innerHTML = `<div class="flex items-center justify-center py-4 bg-white/50 border border-dashed border-slate-300 rounded-lg text-slate-400 text-sm font-medium w-full">未提供照片</div>`;
             }
 
-            // 銷售網站區塊 (支援多個網址且去重)
+            // 銷售網站區塊 (支援多個網址、去重與編號)
             let websiteHtml = '';
             if (team.websiteUrl && team.websiteUrl.trim() !== '') {
                 // 強制為 www 等常見網域補上 http，以利抓取
@@ -1019,8 +1054,9 @@
                 
                 if (urls && urls.length > 0) {
                     const uniqueUrls = getUniqueUrls(urls);
-                    uniqueUrls.forEach(url => {
-                        websiteHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2.5 px-4 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm w-full"><i data-lucide="external-link" class="mr-2 w-4 h-4"></i> 前往銷售網站</a>`;
+                    uniqueUrls.forEach((url, idx) => {
+                        let suffix = uniqueUrls.length > 1 ? `(${idx + 1})` : '';
+                        websiteHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2.5 px-4 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm w-full"><i data-lucide="external-link" class="mr-2 w-4 h-4"></i> 前往銷售網站${suffix}</a>`;
                     });
                 } else {
                     websiteHtml = `<p class="text-sm text-slate-700 whitespace-pre-wrap w-full break-all">${team.websiteUrl}</p>`;
