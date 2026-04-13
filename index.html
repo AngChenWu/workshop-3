@@ -1106,16 +1106,18 @@
             }
 
             lucide.createIcons();
+            
             const modal = document.getElementById('teamModal');
             const modalBox = document.getElementById('modalBox');
             
-            // 讓滾動軸回到最上方
+            modal.classList.remove('hidden');
+
+            // 讓滾動軸回到最上方 (必須在移除 hidden 顯示元素後執行才有效)
             const scrollableContent = document.getElementById('modalScrollableContent');
             if (scrollableContent) {
                 scrollableContent.scrollTop = 0;
             }
 
-            modal.classList.remove('hidden');
             void modal.offsetWidth; 
             modalBox.classList.remove('scale-95', 'opacity-0');
             modalBox.classList.add('scale-100', 'opacity-100');
