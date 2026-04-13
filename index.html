@@ -555,6 +555,17 @@
                 const fImage = getFieldStrict(['圖片網址', '照片', 'image'], []);
                 const fSdg = getFieldStrict(['對應之 SDGs'], ['sdg', '永續指標']);
 
+                // ★ 3. 依據內建推薦名單判斷是否推薦，並記錄原始排序權重 ★
+                let recIndex = Infinity;
+                const isRecommended = recommendedTeamsList.some((recName, idx) => {
+                    const match = (fName.val && fName.val.includes(recName)) || (fName.val && recName.includes(fName.val));
+                    if (match) {
+                        recIndex = idx;
+                        return true;
+                    }
+                    return false;
+                });
+
                 // 地區縮寫供下拉選單使用
                 let locShort = "未分類";
                 if (fLocation.val) locShort = fLocation.val.replace(/台/g, '臺').substring(0, 3);
@@ -581,8 +592,8 @@
                     websiteUrl: fWebsite.val,
                     folderUrl: fFolder.val,
                     sdgs: fSdg.val,
-                    isRecommended: false, // 預設為 false，等待 fetchRecommendations 更新
-                    recIndex: Infinity,
+                    isRecommended: isRecommended,
+                    recIndex: recIndex,
                     imageUrl: firstValidUrl || fallbackImage
                 };
             }).filter(Boolean);
@@ -590,9 +601,38 @@
             // 注意：這裡不呼叫 renderCards()，交給 finalizeAndRender 處理
         }
 
+        // ==========================================
+        // ★ 地區下拉選單自訂排序邏輯 ★
+        // ==========================================
         function initLocationSelect() {
+            // 預定義台灣各縣市的排序標準 (北中南、宜花東、外島)
+            const cityOrder = [
+                '基隆市', '臺北市', '新北市', '桃園市', '新竹縣', '新竹市', '苗栗縣',
+                '臺中市', '彰化縣', '南投縣', '雲林縣', '嘉義縣', '嘉義市',
+                '臺南市', '高雄市', '屏東縣',
+                '宜蘭縣', '花蓮縣', '臺東縣',
+                '澎湖縣', '金門縣', '連江縣'
+            ];
+
             const locs = new Set(allTeamsData.map(item => item.locFilter).filter(Boolean));
-            const locationsArray = ['全部地區', ...Array.from(locs)];
+            
+            // 將地名陣列依據預定義的排序表進行排序
+            const sortedLocs = Array.from(locs).sort((a, b) => {
+                let idxA = cityOrder.indexOf(a);
+                let idxB = cityOrder.indexOf(b);
+                
+                // 若找不到對應的地名 (例如有自訂或未分類的地名)，排到最後面
+                if (idxA === -1) idxA = 999;
+                if (idxB === -1) idxB = 999;
+                
+                // 如果都在最後面，依照筆畫/字元排序
+                if (idxA === 999 && idxB === 999) {
+                    return a.localeCompare(b, 'zh-TW');
+                }
+                return idxA - idxB;
+            });
+
+            const locationsArray = ['全部地區', ...sortedLocs];
             locationSelect.innerHTML = ''; 
             locationsArray.forEach(loc => {
                 const option = document.createElement('option');
@@ -878,7 +918,6 @@
             const parsedMainPhoto = parseContentToHtml(team.mainProductPhoto || '');
             const photoContent = document.getElementById('modalProductPhotoContent');
             const websiteContent = document.getElementById('modalWebsiteContent');
-            const photoContainer = document.getElementById('modalProductPhotoContainer');
             
             // 照片區塊
             if (team.mainProductPhoto && team.mainProductPhoto.trim() !== '') {
@@ -897,12 +936,8 @@
                 } else {
                     photoContent.innerHTML = ``;
                 }
-                photoContainer.classList.remove('hidden');
-                photoContainer.classList.add('flex');
             } else {
                 photoContent.innerHTML = ``;
-                photoContainer.classList.remove('hidden');
-                photoContainer.classList.add('flex');
             }
 
             // 銷售網站區塊 (支援多個網址)
