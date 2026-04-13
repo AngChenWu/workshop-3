@@ -140,8 +140,8 @@
                 </button>
             </div>
             
-            <!-- 內容區 -->
-            <div class="px-3 sm:px-6 py-4 sm:py-6 overflow-y-auto flex-grow custom-scrollbar">
+            <!-- 內容區 (加上 ID 以控制滾動條) -->
+            <div id="modalScrollableContent" class="px-3 sm:px-6 py-4 sm:py-6 overflow-y-auto flex-grow custom-scrollbar">
                 
                 <div class="flex flex-col gap-4 sm:gap-6 mb-6">
                     <!-- 核心合作提案內容與照片/網站專區 -->
@@ -544,7 +544,10 @@
                     if (label && !usedPhotoKeys.includes(label)) usedPhotoKeys.push(label);
                     
                     if (val && val !== '') {
-                        combinedPhotos.push(val);
+                        // 避免不同欄位填寫完全一樣的網址被重複合併
+                        if (!combinedPhotos.includes(val)) {
+                            combinedPhotos.push(val);
+                        }
                     }
                 });
                 
@@ -796,7 +799,19 @@
             const urlRegex = /(https?:\/\/[^\s\n,，。、]+)/g;
             let imagesHtml = '';
             
+            // 追蹤已經處理過的網址 (去重用)
+            let seenUrls = new Set();
+
             let formattedText = processedText.replace(urlRegex, (url) => {
+                // 正規化網址供比對 (移除尾部斜線)
+                let normUrl = url.replace(/\/+$/, '');
+                
+                // 如果已經存在一模一樣的網址，在文字中隱藏它，且不再重複產生圖片卡
+                if (seenUrls.has(normUrl)) {
+                    return ''; 
+                }
+                seenUrls.add(normUrl);
+
                 let fileId = null;
                 const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) || url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
                 const driveFolderMatch = url.match(/drive\.google\.com\/.*folders\/([a-zA-Z0-9_-]+)/);
@@ -894,7 +909,15 @@
                 textWithHttp = textWithHttp.replace(/(^|[\s\n,，。、])(instagram\.com[^\s\n,，。、]+)/g, '$1https://$2');
                 const urls = textWithHttp.match(/(https?:\/\/[^\s\n,，。、]+)/g);
                 if (urls && urls.length > 0) {
-                    const uniqueUrls = [...new Set(urls)];
+                    const uniqueUrls = [];
+                    const seen = new Set();
+                    urls.forEach(url => {
+                        let norm = url.replace(/\/+$/, '');
+                        if (!seen.has(norm)) {
+                            seen.add(norm);
+                            uniqueUrls.push(url);
+                        }
+                    });
                     uniqueUrls.forEach(url => {
                         topLinksHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm"><i data-lucide="shopping-cart" class="mr-2 w-4 h-4"></i> 前往銷售網站</a>`;
                     });
@@ -940,7 +963,7 @@
                 photoContent.innerHTML = ``;
             }
 
-            // 銷售網站區塊 (支援多個網址)
+            // 銷售網站區塊 (支援多個網址且去重)
             let websiteHtml = '';
             if (team.websiteUrl && team.websiteUrl.trim() !== '') {
                 // 強制為 www 等常見網域補上 http，以利抓取
@@ -951,7 +974,15 @@
                 const urls = textWithHttp.match(/(https?:\/\/[^\s\n,，。、]+)/g);
                 
                 if (urls && urls.length > 0) {
-                    const uniqueUrls = [...new Set(urls)];
+                    const uniqueUrls = [];
+                    const seen = new Set();
+                    urls.forEach(url => {
+                        let norm = url.replace(/\/+$/, '');
+                        if (!seen.has(norm)) {
+                            seen.add(norm);
+                            uniqueUrls.push(url);
+                        }
+                    });
                     uniqueUrls.forEach(url => {
                         websiteHtml += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center py-2.5 px-4 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm font-bold text-sm w-full"><i data-lucide="external-link" class="mr-2 w-4 h-4"></i> 前往銷售網站</a>`;
                     });
@@ -1078,6 +1109,12 @@
             const modal = document.getElementById('teamModal');
             const modalBox = document.getElementById('modalBox');
             
+            // 讓滾動軸回到最上方
+            const scrollableContent = document.getElementById('modalScrollableContent');
+            if (scrollableContent) {
+                scrollableContent.scrollTop = 0;
+            }
+
             modal.classList.remove('hidden');
             void modal.offsetWidth; 
             modalBox.classList.remove('scale-95', 'opacity-0');
