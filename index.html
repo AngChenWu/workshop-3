@@ -270,17 +270,8 @@
         // ==========================================
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wkXuV1hweIW2tA6GMuHQ8gkjvCeVBj-VfHROyAlr358/edit?gid=0#gid=0'; 
         let allTeamsData = []; 
+        let recommendedTeamsList = []; // 動態抓取
         let showOnlyRecommended = false; // 過濾開關狀態
-
-        // 會內推薦名單 (按照此陣列的順序進行推薦排序)
-        const recommendedTeamsList = [
-            '天賜糧源', '農協力企業社', '林果園有限公司', '三小文創有限公司／三小市集',
-            '二號空間藝文事業有限公司', '社團法人南投縣仁愛鄉東岸部落產業促進發展協會',
-            '這裡好好生活所', '雙連梨', '微醺農場/微醺農場', '通利水產行（壹顆蜆）',
-            '海洋沅實業有限公司', '洄遊吧 FISH BAR', '青出宜蘭有限公司', '禾子企業有限公司/和禾聚落',
-            '股份魚鄉', '宏展農業行銷科技有限公司/宏展農場', '大山北月', '山号整合設計有限公司',
-            '島之島事業有限公司', '郡碩農創有限公司/圓緣不絕', '迎蜂有限公司'
-        ];
 
         // 19大產業分類清單
         const industryCategories = [
@@ -323,7 +314,7 @@
         const toggleRecBtn = document.getElementById('toggleRecBtn');
         const toggleRecIcon = document.getElementById('toggleRecIcon');
 
-        // Excel 欄位轉數字 index 的輔助函數 (A=0, B=1... K=10, P=15)
+        // Excel 欄位轉數字 index 的輔助函數 (A=0, B=1... D=3, K=10, P=15)
         function colToIdx(colStr) {
             let idx = 0;
             for (let i = 0; i < colStr.length; i++) {
@@ -379,7 +370,7 @@
         }
 
         // ==========================================
-        // 🧠 API 抓取主資料
+        // 🧠 API 抓取主資料與推薦名單
         // ==========================================
         function fetchSheetData() {
             if (!SHEET_URL) {
@@ -422,11 +413,71 @@
                     });
 
                     processData(rawData, colsData);
+                    
+                    // 抓完主資料後，立刻去抓取「會內推薦名單」
+                    document.getElementById('loadingText').textContent = "正在同步會內推薦名單...";
+                    fetchRecommendations(sheetId);
                 })
                 .catch(err => {
                     console.error(err);
                     showErrorState("無法抓取 Google Sheet 資料。請確認權限已設定為「知道連結的人均可檢視」。", true);
                 });
+        }
+
+        function fetchRecommendations(sheetId) {
+            const sheetName = '會內推薦名單';
+            const url2 = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+
+            fetch(url2)
+                .then(res => { if(!res.ok) throw new Error(); return res.text(); })
+                .then(text => {
+                    const jsonMatch = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/);
+                    if (jsonMatch) {
+                        const data = JSON.parse(jsonMatch[1]);
+                        if(data.table && data.table.rows) {
+                            
+                            // 找出 D 欄 (推薦名單所在的欄位)
+                            const colsData = data.table.cols;
+                            let dColIdx = colToIdx('D'); 
+                            const dColFromId = colsData.findIndex(c => c && c.id === 'D');
+                            if (dColFromId !== -1) {
+                                dColIdx = dColFromId;
+                            }
+
+                            recommendedTeamsList = [];
+                            data.table.rows.forEach(row => {
+                                if (row.c && row.c.length > dColIdx && row.c[dColIdx] && row.c[dColIdx].v) {
+                                    const recName = String(row.c[dColIdx].v).trim();
+                                    if (recName) {
+                                        recommendedTeamsList.push(recName);
+                                    }
+                                }
+                            });
+
+                            // 更新 allTeamsData 的 isRecommended 狀態
+                            allTeamsData.forEach(team => {
+                                const recIndex = recommendedTeamsList.findIndex(recName => 
+                                    (team.name && team.name.includes(recName)) || (team.name && recName.includes(team.name))
+                                );
+                                if (recIndex !== -1) {
+                                    team.isRecommended = true;
+                                    team.recIndex = recIndex;
+                                }
+                            });
+                        }
+                    }
+                    finalizeAndRender();
+                })
+                .catch((err) => {
+                    console.error("無法抓取推薦名單:", err);
+                    finalizeAndRender(); // 即使推薦名單抓取失敗，也要渲染主資料
+                });
+        }
+
+        function finalizeAndRender() {
+            loadingState.classList.add('hidden');
+            initLocationSelect();
+            renderCards();
         }
 
         // 處理並精準抓取欄位
@@ -504,17 +555,6 @@
                 const fImage = getFieldStrict(['圖片網址', '照片', 'image'], []);
                 const fSdg = getFieldStrict(['對應之 SDGs'], ['sdg', '永續指標']);
 
-                // ★ 3. 依據內建推薦名單判斷是否推薦，並記錄原始排序權重 ★
-                let recIndex = Infinity;
-                const isRecommended = recommendedTeamsList.some((recName, idx) => {
-                    const match = (fName.val && fName.val.includes(recName)) || (fName.val && recName.includes(fName.val));
-                    if (match) {
-                        recIndex = idx;
-                        return true;
-                    }
-                    return false;
-                });
-
                 // 地區縮寫供下拉選單使用
                 let locShort = "未分類";
                 if (fLocation.val) locShort = fLocation.val.replace(/台/g, '臺').substring(0, 3);
@@ -541,15 +581,13 @@
                     websiteUrl: fWebsite.val,
                     folderUrl: fFolder.val,
                     sdgs: fSdg.val,
-                    isRecommended: isRecommended,
-                    recIndex: recIndex,
+                    isRecommended: false, // 預設為 false，等待 fetchRecommendations 更新
+                    recIndex: Infinity,
                     imageUrl: firstValidUrl || fallbackImage
                 };
             }).filter(Boolean);
 
-            loadingState.classList.add('hidden');
-            initLocationSelect();
-            renderCards();
+            // 注意：這裡不呼叫 renderCards()，交給 finalizeAndRender 處理
         }
 
         function initLocationSelect() {
@@ -840,6 +878,7 @@
             const parsedMainPhoto = parseContentToHtml(team.mainProductPhoto || '');
             const photoContent = document.getElementById('modalProductPhotoContent');
             const websiteContent = document.getElementById('modalWebsiteContent');
+            const photoContainer = document.getElementById('modalProductPhotoContainer');
             
             // 照片區塊
             if (team.mainProductPhoto && team.mainProductPhoto.trim() !== '') {
@@ -858,8 +897,12 @@
                 } else {
                     photoContent.innerHTML = ``;
                 }
+                photoContainer.classList.remove('hidden');
+                photoContainer.classList.add('flex');
             } else {
                 photoContent.innerHTML = ``;
+                photoContainer.classList.remove('hidden');
+                photoContainer.classList.add('flex');
             }
 
             // 銷售網站區塊 (支援多個網址)
